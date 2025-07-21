@@ -1,0 +1,16 @@
+name: ChatLite
+version: '${version}'
+main: net.scape.project.chatLite.ChatLite
+api-version: '1.13'
+load: STARTUP
+authors: [ Scape ]
+folia-supported: true
+description: Simply Control your chat format.
+softdepend:
+  - Vault
+  - PlaceholderAPI
+commands:
+  chatlite:
+    description: ChatLite main command
+    usage: /chatlite reload
+    permission: chatlite.reload

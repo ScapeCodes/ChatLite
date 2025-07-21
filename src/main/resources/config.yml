@@ -1,0 +1,43 @@
+# Built-in plugin placeholders you can use in chat formats:
+# - %player%       : Player's username
+# - %displayname%  : Player's display name
+# - %world%        : Name of the world the player is currently in
+# - %message%      : The chat message sent by the player
+# - %rank%         : Player's rank/group name (depends on Vault or group system)
+# - %prefix%       : Player prefix from Vault (if available)
+# - %suffix%       : Player suffix from Vault (if available)
+#
+# Supports PlaceholderAPI placeholders if PlaceholderAPI plugin is installed.
+
+chat:
+  # If true, players need permission to use color codes in chat messages and formats.
+  require-permission-for-colors: true
+
+  # Permission prefix for color codes.
+  # For example, to allow '&a' color code, player needs 'chat.color.a' permission.
+  color-permission-prefix: "chat.color."
+
+  # If true, RGB hex color codes (like '&#rrggbb') are supported in chat messages.
+  allow-rgb: false
+
+  # Enable group-specific chat formats.
+  # When enabled, players' chat format is determined by their group/rank.
+  enable-group-format: true
+
+  # If true, chat messages and formats will be parsed with MiniMessage for advanced formatting.
+  # Requires Adventure MiniMessage library dependency and proper implementation in the plugin.
+  # Normal color codes(&a, &l) can be used, but they will be converted into <color> formats.
+  use-minimessage: false
+
+  # The default chat format used for players without a specific group format,
+  # or when group formats are disabled.
+  global-format: "&7[&bGlobal&7] &a%player%: &f%message%"
+
+  # Group-specific chat formats.
+  # Define formats for different permission groups here.
+  # If a player's group is not listed, 'default' format will be used.
+  groups:
+    default: "&7[&f%player%&7]: &f%message%"
+    admin: "&c[Admin] &c%player%: &f%message%"
+    mod: "&2[Mod] &a%player%: &f%message%"
+    vip: "&6[VIP] &e%player%: &f%message%"

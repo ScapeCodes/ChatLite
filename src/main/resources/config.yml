@@ -22,7 +22,7 @@ chat:
 
   # Enable group-specific chat formats.
   # When enabled, players' chat format is determined by their group/rank.
-  enable-group-format: true
+  enable-group-format: false
 
   # If true, chat messages and formats will be parsed with MiniMessage for advanced formatting.
   # Requires Adventure MiniMessage library dependency and proper implementation in the plugin.

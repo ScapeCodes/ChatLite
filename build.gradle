@@ -5,7 +5,7 @@ plugins {
 sourceCompatibility = 21
 targetCompatibility = 21
 group = 'net.scape.project'
-version = '1.0.0'
+version = '1.0.1'
 
 repositories {
     mavenCentral()
@@ -33,6 +33,7 @@ dependencies {
 
     compileOnly 'me.clip:placeholderapi:2.11.6'
     compileOnly "net.milkbowl.vault:VaultUnlockedAPI:2.11"
+    compileOnly 'com.github.LoneDev6:itemsadder-api:3.6.3-beta-14'
 }
 
 processResources {

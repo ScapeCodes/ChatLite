@@ -1,5 +1,7 @@
 package net.scape.project.chatLite;
 
+import dev.lone.itemsadder.api.FontImages.FontImageWrapper;
+import dev.lone.itemsadder.api.ItemsAdder;
 import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.Component;
@@ -13,6 +15,8 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
+import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.plugin.RegisteredServiceProvider;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -38,7 +42,7 @@ public final class ChatLite extends JavaPlugin implements Listener {
         setupVault();
 
         getCommand("chatlite").setExecutor(new ChatLiteCommand(this));
-        Bukkit.getPluginManager().registerEvents(this, this);
+        getServer().getPluginManager().registerEvents(this, this);
         getLogger().info("ChatLite enabled.");
     }
 
@@ -55,6 +59,10 @@ public final class ChatLite extends JavaPlugin implements Listener {
         return Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI");
     }
 
+    public boolean isItemsAdderEnabled() {
+        return Bukkit.getPluginManager().isPluginEnabled("ItemsAdder");
+    }
+
     private void setupVault() {
         RegisteredServiceProvider<Chat> rsp = getServer().getServicesManager().getRegistration(Chat.class);
         if (rsp != null) {
@@ -62,126 +70,70 @@ public final class ChatLite extends JavaPlugin implements Listener {
         }
     }
 
-    // Supports both Folia & paper/spigot
     @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
     public void onChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
-        String rawMessage = event.getMessage();
+        String message = event.getMessage();
+        String rank = getRank(player);
+        String format = ConfigUtils.getGroupFormat(rank);
 
-        String playerName = player.getName();
-        String worldName = player.getWorld().getName();
-        String displayName = player.getDisplayName();
+        // Built-in placeholders
+        format = format
+                .replace("%player%", player.getName())
+                .replace("%displayname%", player.getDisplayName())
+                .replace("%world%", player.getWorld().getName())
+                .replace("%message%", message)
+                .replace("%rank%", rank);
 
-        Runnable task = () -> {
-            String rank = getRank(player);
-            String format = ConfigUtils.getGroupFormat(rank);
+        // Vault prefix/suffix
+        if (vaultChat != null) {
+            String prefix = vaultChat.getPlayerPrefix(player);
+            String suffix = vaultChat.getPlayerSuffix(player);
+            format = format.replace("%prefix%", prefix == null ? "" : prefix)
+                    .replace("%suffix%", suffix == null ? "" : suffix);
+        }
 
-            // Apply built-in placeholders
-            format = format
-                    .replace("%player%", playerName)
-                    .replace("%displayname%", displayName)
-                    .replace("%world%", worldName)
-                    .replace("%rank%", rank)
-                    .replace("%message%", rawMessage);
+        // PlaceholderAPI
+        if (isPAPIEnabled()) {
+            format = PlaceholderAPI.setPlaceholders(player, format);
+        }
 
-            // Vault placeholders
-            if (vaultChat != null) {
-                String prefix = vaultChat.getPlayerPrefix(player);
-                String suffix = vaultChat.getPlayerSuffix(player);
-                format = format.replace("%prefix%", prefix != null ? prefix : "")
-                        .replace("%suffix%", suffix != null ? suffix : "");
-            }
+        if (isItemsAdderEnabled()) {
+            format = FontImageWrapper.replaceFontImages(format);
+        }
 
-            // PlaceholderAPI
-            if (isPAPIEnabled()) {
-                format = PlaceholderAPI.setPlaceholders(player, format);
-            }
+        // Apply color codes and MiniMessage formatting based on config
+        boolean useMiniMessage = getConfig().getBoolean("chat.use-minimessage", false);
 
-            boolean useMiniMessage = getConfig().getBoolean("chat.use-minimessage", false);
-            if (useMiniMessage) {
-                format = legacyToMiniMessage(format, player);
-                String msgFormatted = legacyToMiniMessage(rawMessage, player);
-                format = format.replace("%message%", msgFormatted);
-                Component chatComponent = miniMessage.deserialize(format);
+        if (useMiniMessage) {
+            // Convert legacy codes and hex to MiniMessage tags in format and message
+            format = legacyToMiniMessage(format, player);
+            message = legacyToMiniMessage(message, player);
 
-                event.getRecipients().forEach(p -> p.sendMessage(chatComponent));
-                event.setCancelled(true);
-            } else {
-                format = applyColorCodes(format, player);
-                String msgFormatted = applyColorCodes(rawMessage, player);
-                format = format.replace("%message%", msgFormatted);
-                event.setFormat(format);
-            }
-        };
+            // Replace %message% placeholder with the parsed message
+            format = format.replace("%message%", message);
 
-        try {
-            Bukkit.getRegionScheduler().execute(this, player.getLocation(), task);
-        } catch (NoClassDefFoundError e) {
-            Bukkit.getScheduler().runTask(this, task);
+            // Parse the full MiniMessage formatted chat string to Component
+            Component chatComponent = miniMessage.deserialize(format);
+
+            // Set formatted message using Adventure API (requires Paper or supported platform)
+            event.setFormat("%s"); // Dummy format, we override message directly
+            event.getRecipients().forEach(recipient -> {
+                if (recipient != null) {
+                    recipient.sendMessage(chatComponent);
+                }
+            });
+            event.setCancelled(true); // Cancel default chat to prevent double message
+
+        } else {
+            // Old-style legacy color codes processing
+            format = applyColorCodes(format, player);
+            message = applyColorCodes(message, player);
+            format = format.replace("%message%", message);
+
+            event.setFormat(format);
         }
     }
-
-
-//    @EventHandler(priority = EventPriority.LOWEST, ignoreCancelled = true)
-//    public void onChat(AsyncPlayerChatEvent event) {
-//        Player player = event.getPlayer();
-//        String message = event.getMessage();
-//        String rank = getRank(player);
-//        String format = ConfigUtils.getGroupFormat(rank);
-//
-//        // Built-in placeholders
-//        format = format
-//                .replace("%player%", player.getName())
-//                .replace("%displayname%", player.getDisplayName())
-//                .replace("%world%", player.getWorld().getName())
-//                .replace("%message%", message)
-//                .replace("%rank%", rank);
-//
-//        // Vault prefix/suffix
-//        if (vaultChat != null) {
-//            String prefix = vaultChat.getPlayerPrefix(player);
-//            String suffix = vaultChat.getPlayerSuffix(player);
-//            format = format.replace("%prefix%", prefix == null ? "" : prefix)
-//                    .replace("%suffix%", suffix == null ? "" : suffix);
-//        }
-//
-//        // PlaceholderAPI
-//        if (isPAPIEnabled()) {
-//            format = PlaceholderAPI.setPlaceholders(player, format);
-//        }
-//
-//        // Apply color codes and MiniMessage formatting based on config
-//        boolean useMiniMessage = getConfig().getBoolean("chat.use-minimessage", false);
-//
-//        if (useMiniMessage) {
-//            // Convert legacy codes and hex to MiniMessage tags in format and message
-//            format = legacyToMiniMessage(format, player);
-//            message = legacyToMiniMessage(message, player);
-//
-//            // Replace %message% placeholder with the parsed message
-//            format = format.replace("%message%", message);
-//
-//            // Parse the full MiniMessage formatted chat string to Component
-//            Component chatComponent = miniMessage.deserialize(format);
-//
-//            // Set formatted message using Adventure API (requires Paper or supported platform)
-//            event.setFormat("%s"); // Dummy format, we override message directly
-//            event.getRecipients().forEach(recipient -> {
-//                if (recipient instanceof Player) {
-//                    ((Player) recipient).sendMessage(chatComponent);
-//                }
-//            });
-//            event.setCancelled(true); // Cancel default chat to prevent double message
-//
-//        } else {
-//            // Old-style legacy color codes processing
-//            format = applyColorCodes(format, player);
-//            message = applyColorCodes(message, player);
-//            format = format.replace("%message%", message);
-//
-//            event.setFormat(format);
-//        }
-//    }
 
     private String getRank(Player player) {
         if (vaultChat != null) {

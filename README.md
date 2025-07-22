@@ -27,34 +27,42 @@ Example `config.yml`:
 # - %displayname%  : Player's display name
 # - %world%        : Name of the world the player is currently in
 # - %message%      : The chat message sent by the player
-# - %rank%         : Player's rank/group name (via Vault)
+# - %rank%         : Player's rank/group name (depends on Vault or group system)
 # - %prefix%       : Player prefix from Vault (if available)
 # - %suffix%       : Player suffix from Vault (if available)
 #
-# Supports PlaceholderAPI placeholders if the plugin is installed.
+# Supports PlaceholderAPI placeholders if PlaceholderAPI plugin is installed.
 
 chat:
-  # If true, players need permission to use color codes in chat messages.
+  # If true, players need permission to use color codes in chat messages and formats.
   require-permission-for-colors: true
 
-  # Prefix used for permission-based color codes (e.g., chat.color.a)
+  # Permission prefix for color codes.
+  # For example, to allow '&a' color code, player needs 'chat.color.a' permission.
   color-permission-prefix: "chat.color."
 
-  # Allow RGB hex color codes like '&#ff5733'
+  # If true, RGB hex color codes (like '&#rrggbb') are supported in chat messages.
   allow-rgb: false
 
-  # Use MiniMessage formatting (Adventure API)
+  # Enable group-specific chat formats.
+  # When enabled, players' chat format is determined by their group/rank.
+  enable-group-format: false
+
+  # If true, chat messages and formats will be parsed with MiniMessage for advanced formatting.
+  # Requires Adventure MiniMessage library dependency and proper implementation in the plugin.
+  # Normal color codes(&a, &l) can be used, but they will be converted into <color> formats.
   use-minimessage: false
 
-  # Enable group-specific formatting based on Vault group
-  enable-group-format: true
-
-  # Default format used if no group format applies
+  # The default chat format used for players without a specific group format,
+  # or when group formats are disabled.
   global-format: "&7[&bGlobal&7] &a%player%: &f%message%"
 
-  # Formats by Vault group (fallback to 'default' if group not found)
+  # Group-specific chat formats.
+  # Define formats for different permission groups here.
+  # If a player's group is not listed, 'default' format will be used.
   groups:
     default: "&7[&f%player%&7]: &f%message%"
     admin: "&c[Admin] &c%player%: &f%message%"
     mod: "&2[Mod] &a%player%: &f%message%"
     vip: "&6[VIP] &e%player%: &f%message%"
+
